@@ -28,6 +28,8 @@ git clone --recursive https://github.com/The-OpenROAD-Project/OpenROAD-flow-scri
 cd OpenROAD-flow-scripts
 ```
 
+<img width="1920" height="983" alt="Screenshot from 2025-10-21 12-58-02" src="https://github.com/user-attachments/assets/5758727e-cfa0-4951-97a8-b41e36a42b53" />
+
 ### 2\. Setup, Build and Verifying OpenROAD
 
 Run the following commands in order from your `OpenROAD-flow-scripts` directory. This single sequence will install dependencies, compile the tools, and verify that they are working.
@@ -46,6 +48,9 @@ source ./env.sh
 yosys -help
 openroad -help
 ```
+<img width="1920" height="983" alt="Screenshot from 2025-10-21 19-36-12" src="https://github.com/user-attachments/assets/abfcaa0e-2dd3-46ca-a113-6bc178af519a" />
+
+<img width="1920" height="983" alt="Screenshot from 2025-10-21 19-17-49" src="https://github.com/user-attachments/assets/4dafa9ff-69a7-4eb1-8e17-9a300115eac9" />
 
   * `sudo ./setup.sh`: This command runs the setup script with **administrator (`sudo`) privileges**. It reads a list of required libraries and tools (like `build-essential`, `python3-dev`, `libboost-all-dev`, etc.) and installs them onto the Linux system using package manager (like `apt`). These are the necessary prerequisites for compiling and running OpenROAD.
 
