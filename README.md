@@ -44,6 +44,7 @@ OR-Tools is a critical dependency that must be built and installed to a system p
     make -j$(nproc)
     sudo make install
     ```
+<img width="1920" height="1080" alt="Screenshot from 2025-10-24 16-11-12" src="https://github.com/user-attachments/assets/27b89cc8-f9be-4bf0-af34-659e9ab1eb08" />
 
 3.  **Return to the original directory:**
 
@@ -61,6 +62,7 @@ This section involves cloning the main OpenROAD repository and applying manual p
     git clone https://github.com/The-OpenROAD-Project/OpenROAD.git
     cd OpenROAD
     ```
+<img width="1920" height="1080" alt="Screenshot from 2025-10-24 14-02-03" src="https://github.com/user-attachments/assets/d010aca9-fcd9-4385-9fc7-36ed39331497" />
 
 2.  **Manually clone the `spdlog` dependency into the `third-party` folder:**
 
@@ -70,34 +72,16 @@ This section involves cloning the main OpenROAD repository and applying manual p
     cd ../.. 
     ```
 
-3.  **Patch `src/CMakeLists.txt`:**
-    Open the file (`nano src/CMakeLists.txt`) and comment out the `find_package` line for `spdlog` (approx. line 235) to prevent it from searching for a system-wide version.
-
-    **Change this:**
-
-    ```cmake
-    find_package(spdlog REQUIRED)
-    ```
-
-    **To this:**
-
-    ```cmake
-    # find_package(spdlog REQUIRED)
-    ```
-
-4.  **Patch the root `CMakeLists.txt`:**
-    Open the root `CMakeLists.txt` file (`nano CMakeLists.txt`) and add a line to build the `spdlog` library from the subdirectory we just cloned. Add it immediately after `add_subdirectory(third-party)`.
-
-    ```cmake
-    add_subdirectory(third-party)
-    # Add this line
-    add_subdirectory(third-party/spdlog)
-    add_subdirectory(src)
-    ```
+3.  Build dependencies using the commaand:
+   
+   ```bash
+    ./etc/DepenndencyInstaller.sh -common -local 
+   ```
+<img width="1920" height="1080" alt="Screenshot from 2025-10-24 22-47-02" src="https://github.com/user-attachments/assets/dd6fd602-5990-4382-ba4c-fa05fa184340" />
 
 ### **Section 4: Configure the OpenROAD Build**
 
-With the source patched, you can now configure the project using CMake, specifying the correct compiler and dependency paths.
+We can now configure the project using CMake, specifying the correct compiler and dependency paths.
 
 1.  **Create a clean build directory:**
 
@@ -117,6 +101,7 @@ With the source patched, you can now configure the project using CMake, specifyi
     -DCMAKE_PREFIX_PATH="/usr/local" \
     -DCMAKE_CXX_COMPILER=/usr/bin/g++-9
     ```
+<img width="1920" height="1080" alt="Screenshot from 2025-10-25 18-50-55" src="https://github.com/user-attachments/assets/4f4c82ce-4024-4dd5-895a-5a2a9224ae2f" />
 
 ### **Section 5: Compile and Install OpenROAD**
 
@@ -133,6 +118,9 @@ The final step is to compile the source code and install the binary.
     ```bash
     sudo make install
     ```
+<img width="1920" height="1080" alt="Screenshot from 2025-10-25 00-51-29" src="https://github.com/user-attachments/assets/7b61b494-585b-4086-a097-cbd951927039" />
+
+<img width="1920" height="1080" alt="Screenshot from 2025-10-25 00-51-46" src="https://github.com/user-attachments/assets/5e0a8bf6-d2ec-4d82-828e-7543869fe1f2" />
 
 -----
 
@@ -140,6 +128,10 @@ Upon successful completion of these steps, you can launch the application by run
 
 
 ## **Summary of Floorplanning and Placement Stages using OpenROAD**
+
+<img width="1920" height="1080" alt="Screenshot from 2025-10-25 16-28-48" src="https://github.com/user-attachments/assets/c4f3c51d-6774-4099-b1c6-87d5b3f04051" />
+
+<img width="1920" height="1080" alt="Screenshot from 2025-10-25 16-31-20" src="https://github.com/user-attachments/assets/92dc9455-2a5b-49b6-a337-695e6b5af9fe" />
 
 ### **1. Floorplanning**
 
@@ -152,12 +144,18 @@ The first step involved defining the chip's dimensions and the usable logic area
 * **Process:** The script initialized the **Die Area** (the total chip boundary) and the **Core Area** (the inner region for cell placement).
 * **Observation:** The layout view successfully rendered the die and core boundaries. Within the core, horizontal **Standard Cell Rows** were created, establishing the foundational grid for subsequent logic placement.
 
+<img width="3972" height="2505" alt="image" src="https://github.com/user-attachments/assets/6161602e-6e2c-4455-9668-fec5f66c5092" />
+
+<img width="3972" height="2505" alt="image" src="https://github.com/user-attachments/assets/5a262579-7205-49c3-a556-a51088576a94" />
+
 #### **1.2. Power Distribution Network (PDN) Generation (`flow_pdn.tcl`)**
 
 With the core area defined, the next critical step was to create the power grid.
 
 * **Process:** The script generated the Power Distribution Network (PDN), creating a grid of metal straps for power (VDD, shown as red lines) and ground (GND, shown as pink lines).
 * **Observation:** The PDN was successfully overlaid onto the core area. This ensures that the standard cell rows have access to the necessary power and ground connections, making the design structurally ready for cell placement.
+
+<img width="3972" height="2505" alt="image" src="https://github.com/user-attachments/assets/7fd5144e-f59e-46bb-85f2-816aa7295cb5" />
 
 ---
 
@@ -172,18 +170,13 @@ Global placement determines the optimal, approximate location for each standard 
 * **Process:** The tool placed all standard cells (visible as small red blocks) onto the rows based on their connectivity. I/O pins were also placed along the chip periphery.
 * **Observation:** At this stage, cells were clustered based on logical connections, but legality was not enforced. This resulted in significant cell overlapping, which is the expected outcome of global placement.
 
+<img width="3972" height="2505" alt="image" src="https://github.com/user-attachments/assets/8efabe6c-1a1f-44f6-991b-478dbda699a8" />
+
 #### **2.2. Detailed Placement (`flow_detalied_placement.tcl`)**
 
 Detailed placement takes the output of the global phase and legalizes it, ensuring no cells overlap and all design rules are met.
 
 * **Process:** The tool adjusted cell positions, snapping them to the placement grid defined by the standard cell rows.
-* **Observation:** The resulting layout shows all standard cells (red blocks) are now neatly aligned within the horizontal rows with no overlaps. This represents a legal, routable placement, ready for the next stage (Clock Tree Synthesis).
+* **Observation:** The resulting layout shows all standard cells (red blocks) are now neatly aligned within the horizontal rows with no overlaps. This represents a legal, routable placement, ready for the next stage (Clock Tree Synthesis)
 
----
-
-### **3. Post-Placement Timing Analysis**
-
-Following the completion of detailed placement, an initial timing analysis was performed to assess the design's adherence to timing constraints.
-
-* **Worst Negative Slack (WNS) / Setup Timing:** The analysis reported a **WNS of +0.106 ns**. A positive WNS indicates that the design currently meets all setup timing requirements, meaning the longest signal paths are faster than the clock cycle allows.
-* **Total Negative Slack (TNS) / Hold Timing:** The analysis reported a **TNS of -0.009 ns**. This small negative value indicates the presence of minor hold time violations. It is standard for minor hold violations to exist at this stage; they are typically resolved during or after Clock Tree Synthesis (CTS) and subsequent optimization steps.
+<img width="3972" height="2505" alt="image" src="https://github.com/user-attachments/assets/46034af5-6c54-4d61-921f-add07dc9e85f" />
