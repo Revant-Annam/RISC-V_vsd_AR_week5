@@ -1,109 +1,189 @@
 # Week 5 - OpenROAD Flow Setup and Floorplan + Placement
 
-This document explain the setting up the OpenROAD Flow Scripts environment and execute the Floorplan and Placement stages of the physical design flow.
+## **OpenROAD Installation Guide**
+
+OpenROAD is an integrated executable application that performs physical design for VLSI. This guide details the installation procedure.
 
 -----
 
-## 📚 Contents
+### **Section 1: Install Prerequisites and Compiler**
 
-  - [Steps for Week 5 Task (Floorplan & Placement)](#steps-for-week-5-task-floorplan--placement)
-      - [1. Clone the OpenROAD Flow Scripts Repository](#1-clone-the-openroad-flow-scripts-repository)
-      - [2. Setup, Build and Verifying OpenROAD](#2-setup-build-and-verifying-openroad)
-      - [3. Run the Flow to the **Floorplan** Stage](#3-run-the-flow-to-the-floorplan-stage)
-      - [4. Visualize the Floorplan (Deliverable 1)](#4-visualize-the-floorplan-deliverable-1)
-      - [5. Run the Flow to the **Placement** Stage](#5-run-the-flow-to-the-placement-stage)
-      - [6. Visualize the Placement (Deliverable 2)](#6-visualize-the-placement-deliverable-2)
+The OpenROAD build process is sensitive to the compiler version. These steps will install essential build tools and the required GCC-9 compiler.
+
+1.  **Update repositories and install build-essential packages:**
+
+    ```bash
+    sudo apt update
+    sudo apt install build-essential git cmake swig python3-dev -y
+    ```
+
+2.  **Add the toolchain repository and install g++-9:**
+
+    ```bash
+    sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+    sudo apt update
+    sudo apt install g++-9 -y
+    ```
+
+### **Section 2: Build and Install OR-Tools Dependency**
+
+OR-Tools is a critical dependency that must be built and installed to a system path (e.g., `/usr/local`) for OpenROAD to locate it.
+
+1.  **Clone the OR-Tools repository:**
+
+    ```bash
+    git clone https://github.com/google/or-tools.git
+    cd or-tools
+    ```
+
+2.  **Create a build directory, configure, compile, and install:**
+
+    ```bash
+    mkdir build && cd build
+    cmake -DBUILD_DEPS=ON -DCMAKE_BUILD_TYPE=Release ..
+    make -j$(nproc)
+    sudo make install
+    ```
+
+3.  **Return to the original directory:**
+
+    ```bash
+    cd ../..
+    ```
+
+### **Section 3: Clone and Patch OpenROAD Source**
+
+This section involves cloning the main OpenROAD repository and applying manual patches to resolve dependency issues related to `spdlog`.
+
+1.  **Clone the OpenROAD repository in home directory:**
+
+    ```bash
+    git clone https://github.com/The-OpenROAD-Project/OpenROAD.git
+    cd OpenROAD
+    ```
+
+2.  **Manually clone the `spdlog` dependency into the `third-party` folder:**
+
+    ```bash
+    cd third-party
+    git clone https://github.com/gabime/spdlog.git
+    cd ../.. 
+    ```
+
+3.  **Patch `src/CMakeLists.txt`:**
+    Open the file (`nano src/CMakeLists.txt`) and comment out the `find_package` line for `spdlog` (approx. line 235) to prevent it from searching for a system-wide version.
+
+    **Change this:**
+
+    ```cmake
+    find_package(spdlog REQUIRED)
+    ```
+
+    **To this:**
+
+    ```cmake
+    # find_package(spdlog REQUIRED)
+    ```
+
+4.  **Patch the root `CMakeLists.txt`:**
+    Open the root `CMakeLists.txt` file (`nano CMakeLists.txt`) and add a line to build the `spdlog` library from the subdirectory we just cloned. Add it immediately after `add_subdirectory(third-party)`.
+
+    ```cmake
+    add_subdirectory(third-party)
+    # Add this line
+    add_subdirectory(third-party/spdlog)
+    add_subdirectory(src)
+    ```
+
+### **Section 4: Configure the OpenROAD Build**
+
+With the source patched, you can now configure the project using CMake, specifying the correct compiler and dependency paths.
+
+1.  **Create a clean build directory:**
+
+    ```bash
+    rm -rf build
+    mkdir build
+    cd build
+    ```
+
+2.  **Run CMake with the required flags:**
+    This command points CMake to the g++-9 compiler and the location of the OR-Tools installation.
+
+    ```bash
+    cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CXX_FLAGS="-Wno-error" \
+    -DCMAKE_PREFIX_PATH="/usr/local" \
+    -DCMAKE_CXX_COMPILER=/usr/bin/g++-9
+    ```
+
+### **Section 5: Compile and Install OpenROAD**
+
+The final step is to compile the source code and install the binary.
+
+1.  **Compile the project (this may take a significant amount of time):**
+
+    ```bash
+    make -j$(nproc)
+    ```
+
+2.  **Install the application to the system:**
+
+    ```bash
+    sudo make install
+    ```
 
 -----
 
-## Steps for Week 5 Task (Floorplan & Placement)
+Upon successful completion of these steps, you can launch the application by running the `openroad` command in your terminal.
 
 
-### 1\. Clone the OpenROAD Flow Scripts Repository
+## **Summary of Floorplanning and Placement Stages using OpenROAD**
 
-This is the main repository for the flow. The `--recursive` flag is crucial because the OpenROAD-flow-scripts repository uses Git submodules.
+### **1. Floorplanning**
 
-```bash
-git clone --recursive https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts
-cd OpenROAD-flow-scripts
-```
+Floorplanning is the initial stage of physical design, responsible for defining the chip's physical boundaries, allocating area for logic, and establishing the power infrastructure.
 
-<img width="1920" height="983" alt="Screenshot from 2025-10-21 12-58-02" src="https://github.com/user-attachments/assets/5758727e-cfa0-4951-97a8-b41e36a42b53" />
+#### **1.1. Core and Die Initialization (`flow_floorplan.tcl`)**
 
-### 2\. Setup, Build and Verifying OpenROAD
+The first step involved defining the chip's dimensions and the usable logic area.
 
-Run the following commands in order from your `OpenROAD-flow-scripts` directory. This single sequence will install dependencies, compile the tools, and verify that they are working.
+* **Process:** The script initialized the **Die Area** (the total chip boundary) and the **Core Area** (the inner region for cell placement).
+* **Observation:** The layout view successfully rendered the die and core boundaries. Within the core, horizontal **Standard Cell Rows** were created, establishing the foundational grid for subsequent logic placement.
 
-```bash
-# 1. Install system-wide dependencies
-sudo ./setup.sh
+#### **1.2. Power Distribution Network (PDN) Generation (`flow_pdn.tcl`)**
 
-# 2. Compile OpenROAD and its tools
-./build_openroad.sh --local
+With the core area defined, the next critical step was to create the power grid.
 
-# 3. Load the new tool paths into your terminal
-source ./env.sh
+* **Process:** The script generated the Power Distribution Network (PDN), creating a grid of metal straps for power (VDD, shown as red lines) and ground (GND, shown as pink lines).
+* **Observation:** The PDN was successfully overlaid onto the core area. This ensures that the standard cell rows have access to the necessary power and ground connections, making the design structurally ready for cell placement.
 
-# 4. Verify the tools are working
-yosys -help
-openroad -help
-```
-<img width="1920" height="983" alt="Screenshot from 2025-10-21 19-36-12" src="https://github.com/user-attachments/assets/abfcaa0e-2dd3-46ca-a113-6bc178af519a" />
+---
 
-<img width="1920" height="983" alt="Screenshot from 2025-10-21 19-17-49" src="https://github.com/user-attachments/assets/4dafa9ff-69a7-4eb1-8e17-9a300115eac9" />
+### **2. Placement**
 
-  * `sudo ./setup.sh`: This command runs the setup script with **administrator (`sudo`) privileges**. It reads a list of required libraries and tools (like `build-essential`, `python3-dev`, `libboost-all-dev`, etc.) and installs them onto the Linux system using package manager (like `apt`). These are the necessary prerequisites for compiling and running OpenROAD.
+Placement involves arranging all standard cells within the core rows to meet key design objectives: minimizing wire length, reducing congestion, and satisfying timing constraints. This is executed in two phases.
 
-  * `./build_openroad.sh --local`: This is the main compilation command. It executes a script that builds the OpenROAD application (and its bundled tools like Yosys) from the source code cloned. The `--local` flag tells the script to build the tools inside the current project directory (under `OpenROAD-flow-scripts/tools/`) rather than trying to install them system-wide.
+#### **2.1. Global Placement (`flow_global_placement.tcl`)**
 
-  * `source ./env.sh`: This command is crucial for **setting up the environment**. It executes the `env.sh` script in the *current* terminal session, which "exports" environment variables (like the `PATH`) to tell the shell where to find the new `openroad` and `yosys` executables. 
+Global placement determines the optimal, approximate location for each standard cell to minimize overall wire length.
 
-  * `yosys -help` & `openroad -help`: These are **verification commands**. By asking for the `--help` menu, we can test two things:
+* **Process:** The tool placed all standard cells (visible as small red blocks) onto the rows based on their connectivity. I/O pins were also placed along the chip periphery.
+* **Observation:** At this stage, cells were clustered based on logical connections, but legality was not enforced. This resulted in significant cell overlapping, which is the expected outcome of global placement.
 
-    1.  That the `PATH` was set correctly.
-    2.  That the binaries were compiled successfully and are executable.
+#### **2.2. Detailed Placement (`flow_detalied_placement.tcl`)**
 
-If we can see the help text print out for both, then the installation is successful.
-    
-### 4\. Run the Flow to the **Floorplan** Stage
+Detailed placement takes the output of the global phase and legalizes it, ensuring no cells overlap and all design rules are met.
 
-Now, navigate into the `flow` directory and run the `make` command to stop at the floorplan stage. This will use the default `gcd` design.
+* **Process:** The tool adjusted cell positions, snapping them to the placement grid defined by the standard cell rows.
+* **Observation:** The resulting layout shows all standard cells (red blocks) are now neatly aligned within the horizontal rows with no overlaps. This represents a legal, routable placement, ready for the next stage (Clock Tree Synthesis).
 
-```bash
-cd flow
-make floorplan
-```
+---
 
-**Deliverable:** Take a screenshot of your terminal after this command finishes. This is your **"Floorplan completion log"**.
+### **3. Post-Placement Timing Analysis**
 
-### 5\. Visualize the Floorplan (Deliverable 1)
+Following the completion of detailed placement, an initial timing analysis was performed to assess the design's adherence to timing constraints.
 
-Run the following command to open the floorplan layout in the OpenROAD GUI.
-
-```bash
-make gui_floorplan
-```
-
-**Deliverable:** Take a screenshot of the GUI window showing the core area and I/O pins. This is your **"Floorplan view"** image.
-
-### 6\. Run the Flow to the **Placement** Stage
-
-This command will continue from the floorplan and run the standard cell placement.
-
-```bash
-make placement
-```
-
-**Deliverable:** Take a screenshot of your terminal after this command finishes. This is your **"Placement completion log"**.
-
-### 7\. Visualize the Placement (Deliverable 2)
-
-Finally, run this command to open the placement layout in the GUI.
-
-```bash
-make gui_placement
-```
-
-**Deliverable:** Zoom in to see the standard cells arranged in rows. Take a screenshot. This is your **"Placement layout"** image.
-
-✅ **Week 5 Deliverables Complete\!** You now have all the required logs and layout images for your submission.
+* **Worst Negative Slack (WNS) / Setup Timing:** The analysis reported a **WNS of +0.106 ns**. A positive WNS indicates that the design currently meets all setup timing requirements, meaning the longest signal paths are faster than the clock cycle allows.
+* **Total Negative Slack (TNS) / Hold Timing:** The analysis reported a **TNS of -0.009 ns**. This small negative value indicates the presence of minor hold time violations. It is standard for minor hold violations to exist at this stage; they are typically resolved during or after Clock Tree Synthesis (CTS) and subsequent optimization steps.
