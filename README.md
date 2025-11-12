@@ -1,182 +1,133 @@
 # Week 5 - OpenROAD Flow Setup and Floorplan + Placement
 
-## **OpenROAD Installation Guide**
+## 🚗 vs. 👨‍✈️ OpenROAD vs. OpenROAD-flow-scripts
 
-OpenROAD is an integrated executable application that performs physical design for VLSI. This guide details the installation procedure.
+Before the installation, it's crucial to understand the difference between the **OpenROAD application** (the "engine") and **OpenROAD-flow-scripts** (the "driver").
 
------
+  * **🚗 OpenROAD (The Engine):** This is the core C++ application. It's a single, powerful tool with a Tcl interface that can perform specific physical design tasks (like placement, routing, etc.).
 
-### **Section 1: Install Prerequisites and Compiler**
+  * **👨‍✈️ OpenROAD-flow-scripts (The Driver):** This is a set of **automation scripts** (Makefiles, Tcl, and Python) that *uses* the OpenROAD engine. It manages the entire RTL-to-GDSII flow, automatically calling OpenROAD (and other tools like Yosys for synthesis) in the correct sequence.
 
-The OpenROAD build process is sensitive to the compiler version. These steps will install essential build tools and the required GCC-9 compiler.
+**For running a full design, we always want to use `OpenROAD-flow-scripts`.**
 
-1.  **Update repositories and install build-essential packages:**
+### Key Differences at a Glance
 
-    ```bash
-    sudo apt update
-    sudo apt install build-essential git cmake swig python3-dev -y
-    ```
-
-2.  **Add the toolchain repository and install g++-9:**
-
-    ```bash
-    sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-    sudo apt update
-    sudo apt install g++-9 -y
-    ```
-
-### **Section 2: Build and Install OR-Tools Dependency**
-
-OR-Tools is a critical dependency that must be built and installed to a system path (e.g., `/usr/local`) for OpenROAD to locate it.
-
-1.  **Clone the OR-Tools repository:**
-
-    ```bash
-    git clone https://github.com/google/or-tools.git
-    cd or-tools
-    ```
-
-2.  **Create a build directory, configure, compile, and install:**
-
-    ```bash
-    mkdir build && cd build
-    cmake -DBUILD_DEPS=ON -DCMAKE_BUILD_TYPE=Release ..
-    make -j$(nproc)
-    sudo make install
-    ```
-<img width="1920" height="1080" alt="Screenshot from 2025-10-24 16-11-12" src="https://github.com/user-attachments/assets/27b89cc8-f9be-4bf0-af34-659e9ab1eb08" />
-
-3.  **Return to the original directory:**
-
-    ```bash
-    cd ../..
-    ```
-
-### **Section 3: Clone and Patch OpenROAD Source**
-
-This section involves cloning the main OpenROAD repository and applying manual patches to resolve dependency issues related to `spdlog`.
-
-1.  **Clone the OpenROAD repository in home directory:**
-
-    ```bash
-    git clone https://github.com/The-OpenROAD-Project/OpenROAD.git
-    cd OpenROAD
-    ```
-<img width="1920" height="1080" alt="Screenshot from 2025-10-24 14-02-03" src="https://github.com/user-attachments/assets/d010aca9-fcd9-4385-9fc7-36ed39331497" />
-
-2.  **Manually clone the `spdlog` dependency into the `third-party` folder:**
-
-    ```bash
-    cd third-party
-    git clone https://github.com/gabime/spdlog.git
-    cd ../.. 
-    ```
-
-3.  Build dependencies using the commaand:
-   
-   ```bash
-    ./etc/DepenndencyInstaller.sh -common -local 
-   ```
-<img width="1920" height="1080" alt="Screenshot from 2025-10-24 22-47-02" src="https://github.com/user-attachments/assets/dd6fd602-5990-4382-ba4c-fa05fa184340" />
-
-### **Section 4: Configure the OpenROAD Build**
-
-We can now configure the project using CMake, specifying the correct compiler and dependency paths.
-
-1.  **Create a clean build directory:**
-
-    ```bash
-    rm -rf build
-    mkdir build
-    cd build
-    ```
-
-2.  **Run CMake with the required flags:**
-    This command points CMake to the g++-9 compiler and the location of the OR-Tools installation.
-
-    ```bash
-    cmake .. \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_CXX_FLAGS="-Wno-error" \
-    -DCMAKE_PREFIX_PATH="/usr/local" \
-    -DCMAKE_CXX_COMPILER=/usr/bin/g++-9
-    ```
-<img width="1920" height="1080" alt="Screenshot from 2025-10-25 18-50-55" src="https://github.com/user-attachments/assets/4f4c82ce-4024-4dd5-895a-5a2a9224ae2f" />
-
-### **Section 5: Compile and Install OpenROAD**
-
-The final step is to compile the source code and install the binary.
-
-1.  **Compile the project (this may take a significant amount of time):**
-
-    ```bash
-    make -j$(nproc)
-    ```
-
-2.  **Install the application to the system:**
-
-    ```bash
-    sudo make install
-    ```
-<img width="1920" height="1080" alt="Screenshot from 2025-10-25 00-51-29" src="https://github.com/user-attachments/assets/7b61b494-585b-4086-a097-cbd951927039" />
-
-<img width="1920" height="1080" alt="Screenshot from 2025-10-25 00-51-46" src="https://github.com/user-attachments/assets/5e0a8bf6-d2ec-4d82-828e-7543869fe1f2" />
+| Feature | 🚗 OpenROAD (The Application) | 👨‍✈️ OpenROAD-flow-scripts (The Automation) |
+| :--- | :--- | :--- |
+| **What it is** | A single, powerful C++ executable | A collection of Makefiles & Tcl scripts |
+| **Primary Use** | Performing one specific PD task at a time (e.g., `global_placement`) | Running the *entire* automated RTL-to-GDSII flow |
+| **How you use it** | In a Tcl shell or GUI, running manual commands | From the terminal, running a single `make` command |
+| **Installation** | Complex, manual compilation from source | Simple `git clone` & running a setup script |
 
 -----
 
-Upon successful completion of these steps, you can launch the application by running the `openroad` command in your terminal.
+## ⚙️ Installation of OpenROAD-flow-scripts
 
+This guide shows how to install the **automation scripts**, which is the recommended method for running designs. This process does not require building OpenROAD from scratch; it downloads pre-compiled binaries.
 
-## **Summary of Floorplanning and Placement Stages using OpenROAD**
+### 1\. Install Prerequisites
 
-<img width="1920" height="1080" alt="Screenshot from 2025-10-25 16-28-48" src="https://github.com/user-attachments/assets/c4f3c51d-6774-4099-b1c6-87d5b3f04051" />
+First, install the basic dependencies needed to run the flow scripts (note: this is much simpler than building the app).
 
-<img width="1920" height="1080" alt="Screenshot from 2025-10-25 16-31-20" src="https://github.com/user-attachments/assets/92dc9455-2a5b-49b6-a337-695e6b5af9fe" />
+```bash
+sudo apt update
+sudo apt install build-essential git python3 python3-pip python3-venv -y
+```
 
-### **1. Floorplanning**
+### 2\. Clone the Repository
 
-Floorplanning is the initial stage of physical design, responsible for defining the chip's physical boundaries, allocating area for logic, and establishing the power infrastructure.
+Clone the `OpenROAD-flow-scripts` repository from GitHub. This contains all the Makefiles and Tcl scripts.
 
-#### **1.1. Core and Die Initialization (`flow_floorplan.tcl`)**
+```bash
+git clone https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git
+cd OpenROAD-flow-scripts
+```
 
-The first step involved defining the chip's dimensions and the usable logic area.
+### 3\. Run the Setup Script
 
-* **Process:** The script initialized the **Die Area** (the total chip boundary) and the **Core Area** (the inner region for cell placement).
-* **Observation:** The layout view successfully rendered the die and core boundaries. Within the core, horizontal **Standard Cell Rows** were created, establishing the foundational grid for subsequent logic placement.
+This is the most important step. The included scripts will automatically download the pre-built binaries for all required tools (OpenROAD, Yosys, Magic, etc.) and place them in the `tools/` directory.
 
-<img width="3972" height="2505" alt="image" src="https://github.com/user-attachments/assets/6161602e-6e2c-4455-9668-fec5f66c5092" />
+```bash
+./etc/DependencyInstaller.sh
+```
 
-<img width="3972" height="2505" alt="image" src="https://github.com/user-attachments/assets/5a262579-7205-49c3-a556-a51088576a94" />
+> **Note:** You can also use Docker for an even more isolated environment, but this local installation is straightforward and fast.
 
-#### **1.2. Power Distribution Network (PDN) Generation (`flow_pdn.tcl`)**
+After this step, your environment is fully set up to run the flow.
 
-With the core area defined, the next critical step was to create the power grid.
+-----
 
-* **Process:** The script generated the Power Distribution Network (PDN), creating a grid of metal straps for power (VDD, shown as red lines) and ground (GND, shown as pink lines).
-* **Observation:** The PDN was successfully overlaid onto the core area. This ensures that the standard cell rows have access to the necessary power and ground connections, making the design structurally ready for cell placement.
+## 🗺️ Example Flow: Floorplan + Placement for 'gcd'
 
-<img width="3972" height="2505" alt="image" src="https://github.com/user-attachments/assets/7fd5144e-f59e-46bb-85f2-816aa7295cb5" />
+With `OpenROAD-flow-scripts`, you don't run Tcl commands one by one. Instead, you **configure variables** in a design file and let `make` run the flow.
 
----
+### 1\. Configuration (The `config.mk` file)
 
-### **2. Placement**
+Every design (like the example `gcd` design) has a `config.mk` file. This is where you define your floorplan and placement goals.
 
-Placement involves arranging all standard cells within the core rows to meet key design objectives: minimizing wire length, reducing congestion, and satisfying timing constraints. This is executed in two phases.
+Let's look at `designs/asap7/gcd/config.mk`. You would edit this file to control the flow.
 
-#### **2.1. Global Placement (`flow_global_placement.tcl`)**
+**For Floorplanning:**
+Instead of running `init_floorplan` manually, you set these variables:
 
-Global placement determines the optimal, approximate location for each standard cell to minimize overall wire length.
+```makefile
+# Target utilization (e.g., 50%)
+export FP_CORE_UTIL = 50
 
-* **Process:** The tool placed all standard cells (visible as small red blocks) onto the rows based on their connectivity. I/O pins were also placed along the chip periphery.
-* **Observation:** At this stage, cells were clustered based on logical connections, but legality was not enforced. This resulted in significant cell overlapping, which is the expected outcome of global placement.
+# Desired aspect ratio (1.0 = square)
+export FP_ASPECT_RATIO = 1.0
 
-<img width="3972" height="2505" alt="image" src="https://github.com/user-attachments/assets/8efabe6c-1a1f-44f6-991b-478dbda699a8" />
+# Margin between the core and the die boundary
+export FP_CORE_MARGIN = 4.0
+```
 
-#### **2.2. Detailed Placement (`flow_detalied_placement.tcl`)**
+**For Placement:**
+You can set a target placement density.
 
-Detailed placement takes the output of the global phase and legalizes it, ensuring no cells overlap and all design rules are met.
+```makefile
+# Target density for placement (e.g., 60%)
+export PL_TARGET_DENSITY = 0.6
+```
 
-* **Process:** The tool adjusted cell positions, snapping them to the placement grid defined by the standard cell rows.
-* **Observation:** The resulting layout shows all standard cells (red blocks) are now neatly aligned within the horizontal rows with no overlaps. This represents a legal, routable placement, ready for the next stage (Clock Tree Synthesis)
+### 2\. Running the Flow (Floorplan + Placement)
 
-<img width="3972" height="2505" alt="image" src="https://github.com/user-attachments/assets/46034af5-6c54-4d61-921f-add07dc9e85f" />
+To run the flow, you simply use `make` from the `flow/` directory. The Makefiles will automatically run synthesis, then floorplanning, then placement.
+
+1.  **Navigate to the flow directory:**
+
+    ```bash
+    cd flow
+    ```
+
+2.  **Run the flow up to detailed placement:**
+    This command tells the flow to run all steps *up to and including* detailed placement (`6_detail_placement`) for the `gcd` design using the `asap7` PDK.
+
+    ```bash
+    make 6_detail_placement DESIGN_CONFIG=../designs/asap7/gcd/config.mk
+    ```
+
+The flow will automatically execute:
+
+1.  Synthesis (with Yosys)
+2.  **Floorplan** (using your `config.mk` settings)
+3.  Tap cell insertion
+4.  I/O Placement
+5.  **Global Placement**
+6.  **Detailed Placement**
+
+### 3\. Viewing the Results
+
+Your original guide showed screenshots from the OpenROAD GUI. You can still do this\! The flow saves the result of *each step* in the `results/` directory.
+
+To see the final placement:
+
+1.  **Launch the OpenROAD GUI:**
+
+    ```bash
+    openroad
+    ```
+
+2.  **In the GUI, load the final placed design:**
+    The flow saves the design database (`.odb`) or a standard `.def` file. You can load this to visually inspect the floorplan and placement.
+
+    The resulting layout will show the core area, power grid, and all standard cells snapped to the rows with no overlaps, just like in your original screenshots.
