@@ -23,37 +23,68 @@ Before the installation, it's crucial to understand the difference between the *
 
 ## ⚙️ Installation of OpenROAD-flow-scripts
 
-This guide shows how to install the **automation scripts**, which is the recommended method for running designs. This process does not require building OpenROAD from scratch; it downloads pre-compiled binaries.
+This guide details the process of building all the flow's tools (including OpenROAD and Yosys) from their original C++ source code. This method gives the latest features but takes significantly longer.
 
-### 1\. Install Prerequisites
-
-First, install the basic dependencies needed to run the flow scripts (note: this is much simpler than building the app).
+### 1\. Clone the Repository and Submodules
 
 ```bash
-sudo apt update
-sudo apt install build-essential git python3 python3-pip python3-venv -y
-```
-
-### 2\. Clone the Repository
-
-Clone the `OpenROAD-flow-scripts` repository from GitHub. This contains all the Makefiles and Tcl scripts.
-
-```bash
-git clone https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git
+git clone --recursive https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git
 cd OpenROAD-flow-scripts
 ```
 
-### 3\. Run the Setup Script
+<img width="1920" height="1080" alt="Screenshot from 2025-10-26 01-09-09" src="https://github.com/user-attachments/assets/66d93f31-501a-48f8-9795-6a397ce7a326" />
 
-This is the most important step. The included scripts will automatically download the pre-built binaries for all required tools (OpenROAD, Yosys, Magic, etc.) and place them in the `tools/` directory.
+  * **What this does (step-by-step):**
+      * `git clone`: Downloads the main `OpenROAD-flow-scripts` repository, which contains all the automation scripts (Makefiles, Tcl, etc.).
+      * `--recursive`: This is a **critical** flag. It tells Git to also download the source code of all the "submodules" nested inside, which includes the entire source for `tools/OpenROAD`, `tools/yosys`, and other required tools. 
+
+### 2\. Run the Full Dependency Installer
 
 ```bash
-./etc/DependencyInstaller.sh
+sudo ./etc/DependencyInstaller.sh -all
 ```
 
-> **Note:** You can also use Docker for an even more isolated environment, but this local installation is straightforward and fast.
+<img width="1920" height="1080" alt="Screenshot from 2025-10-26 01-09-42" src="https://github.com/user-attachments/assets/253d414a-de39-4046-b055-a9eae808ee46" />
 
-After this step, your environment is fully set up to run the flow.
+<img width="1920" height="1080" alt="Screenshot from 2025-10-26 01-09-51" src="https://github.com/user-attachments/assets/40d1ea3f-7d3d-443a-89c8-8e886bc023d3" />
+
+<img width="1920" height="1080" alt="Screenshot from 2025-10-26 01-16-07" src="https://github.com/user-attachments/assets/231e2890-866e-46a7-b041-bb2bca1a25b4" />
+
+
+  * **What this does:**
+      * `sudo`: Runs the script with "superuser" (administrator) privileges, which are required to install software system-wide.
+      * `./etc/DependencyInstaller.sh`: This is the main setup script you are running.
+      * `-all`: This flag tells the script to do *everything*. As your screenshots (`...01-09-42.jpg`, `...01-09-51.png`) show, this includes:
+        1.  **Installing system packages:** It runs `apt update` and installs all required development libraries (like `build-essential`, `cmake`, `python3-dev`, `libboost`, etc.).
+        2.  **Triggering Local Builds:** Instead of downloading pre-built binaries, this flag tells the script to build every tool from scratch.
+
+### 3\. Build Process
+
+```bash
+./build_openroad.sh --local 
+```
+
+<img width="1920" height="1080" alt="Screenshot from 2025-10-26 01-29-38" src="https://github.com/user-attachments/assets/e4b12614-8b64-4089-b1ef-4c535a7d4625" />
+
+<img width="1920" height="1080" alt="Screenshot from 2025-10-26 03-56-40" src="https://github.com/user-attachments/assets/be42596d-3a45-418e-8886-8882f266ea16" />
+
+<img width="1920" height="1080" alt="Screenshot from 2025-10-26 04-17-00" src="https://github.com/user-attachments/assets/274c84ae-dea1-41d6-a610-a42907042a98" />
+
+<img width="1920" height="1080" alt="Screenshot from 2025-10-26 05-01-46" src="https://github.com/user-attachments/assets/06dbb37b-2ca0-4488-8bc6-d90c5f5b09bf" />
+
+ * **What this does:**
+      * `./build_openroad.sh`: This is the dedicated shell script inside the `tools/OpenROAD` folder responsible *only* for compiling the OpenROAD C++ source code.
+      * `--local`: This flag tells the script to install the final `openroad` executable into the local `tools/install/` directory within your `OpenROAD-flow-scripts` folder, rather than trying to install it system-wide (which would require `sudo`). This is exactly what the flow needs.
+
+### 4\. Verify the installation 
+
+```bash
+source ./env.sh
+openroad -help
+yosys -help
+```
+
+<img width="1920" height="1080" alt="Screenshot from 2025-11-12 15-40-10" src="https://github.com/user-attachments/assets/ac91df1b-87e0-464d-bf3a-3777b2f615da" />
 
 -----
 
