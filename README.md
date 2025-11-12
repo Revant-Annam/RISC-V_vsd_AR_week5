@@ -88,77 +88,76 @@ yosys -help
 
 -----
 
-## 🗺️ Example Flow: Floorplan + Placement for 'gcd'
+## 🗺️ Example Flow: Floorplan + Placement for 'gcd' using 'nanogate45'
 
-With `OpenROAD-flow-scripts`, you don't run Tcl commands one by one. Instead, you **configure variables** in a design file and let `make` run the flow.
+### 1. Synthesis (Stage 1)
 
-### 1\. Configuration (The `config.mk` file)
+* **Command Triggered:** `1_yosys_synthesis`
+* **What it Did:** This stage uses **Yosys** to synthesize your design.
+    * It reads your Verilog source code (`designs/src/gcd/gcd.v`).
+    * It reads the "liberty" file (`.lib`) for the `nanogate45` PDK, which describes all the available standard cells (like `AND`, `OR`, `DFF`, etc.).
+    * It converts your abstract Verilog code into a **netlist**—a specific list of those standard cells and how they are connected.
+    * Your log shows it finished successfully: `End of script.`
 
-Every design (like the example `gcd` design) has a `config.mk` file. This is where you define your floorplan and placement goals.
+<img width="1920" height="1080" alt="Screenshot from 2025-10-27 00-07-09" src="https://github.com/user-attachments/assets/01df1936-4416-44f6-b36c-4668934d9d12" />
 
-Let's look at `designs/asap7/gcd/config.mk`. You would edit this file to control the flow.
+<img width="1920" height="1080" alt="Screenshot from 2025-10-27 00-07-43" src="https://github.com/user-attachments/assets/cdec6a17-ae58-4fc2-beaa-7f033a7f3f76" />
 
-**For Floorplanning:**
-Instead of running `init_floorplan` manually, you set these variables:
+### 2. Floorplan (Stage 2)
 
-```makefile
-# Target utilization (e.g., 50%)
-export FP_CORE_UTIL = 50
+* **Command Triggered:** `2_1_floorplan`, `2_3_floorplan_tapcell`, `2_4_floorplan_pdn`
+* **What it Did:** Immediately after synthesis, the floorplan stage began.
+    * `2_1_floorplan`: This command initialized the chip's boundaries (the **die**) and the area for placing cells (the **core**). Your log shows it achieved a `56% utilization`. It also created the horizontal standard cell rows.
+    * `2_3_floorplan_tapcell`: This inserted **tap cells** (`TAP-0004] Inserted 48 endcaps.`). These are special cells placed in the rows to provide a good connection to the power and ground grid, preventing a "latch-up" condition.
+    * `2_4_floorplan_pdn`: This generated the **Power Distribution Network** (`[INFO PDN-0001] Inserting grid:`). This is the metal grid (VDD and GND) that delivers power to all the cells.
 
-# Desired aspect ratio (1.0 = square)
-export FP_ASPECT_RATIO = 1.0
+<img width="1920" height="1080" alt="Screenshot from 2025-10-27 00-07-55" src="https://github.com/user-attachments/assets/d038547d-c3ca-4d32-9e3e-3776a03f3fea" />
 
-# Margin between the core and the die boundary
-export FP_CORE_MARGIN = 4.0
-```
+<img width="1920" height="1080" alt="Screenshot from 2025-10-27 00-08-42" src="https://github.com/user-attachments/assets/86e35869-c2ad-498e-86e7-764a5f1f1a0d" />
 
-**For Placement:**
-You can set a target placement density.
+### 3. Placement (Stage 3)
 
-```makefile
-# Target density for placement (e.g., 60%)
-export PL_TARGET_DENSITY = 0.6
-```
+* **Command Triggered:** `3_1_place_gp_skip_io`, `3_5_place_dp`
+* **What it Did:** With the floorplan and power grid ready, the flow began placing the 551 standard cells from your synthesized design.
+    * `3_1_place_gp...`: This is **Global Placement**. The tool finds the *optimal approximate* location for all cells to minimize wire length and congestion. At this stage, cells are allowed to overlap.
+    * `3_5_place_dp...`: This is **Detailed Placement**. The tool takes the "illegal" global placement and legalizes it. It snaps all cells to the grid, ensures there are **zero overlaps** (`[INFO DPL-0312] Found 0 overlaps...`), and fine-tunes the locations to meet design rules.
 
-### 2\. Running the Flow (Floorplan + Placement)
+<img width="1920" height="1080" alt="Screenshot from 2025-10-27 00-09-00" src="https://github.com/user-attachments/assets/30982160-8931-4182-b345-a8ed4d63c783" />
 
-To run the flow, you simply use `make` from the `flow/` directory. The Makefiles will automatically run synthesis, then floorplanning, then placement.
+<img width="1920" height="1080" alt="Screenshot from 2025-10-27 00-09-14" src="https://github.com/user-attachments/assets/44fe4d19-8c8c-41a6-a6eb-3ab57338e72d" />
 
-1.  **Navigate to the flow directory:**
+Here is a brief explanation of those results, perfect for adding to your Git repository.
 
-    ```bash
-    cd flow
-    ```
+---
 
-2.  **Run the flow up to detailed placement:**
-    This command tells the flow to run all steps *up to and including* detailed placement (`6_detail_placement`) for the `gcd` design using the `asap7` PDK.
+## 🔬 Results: Floorplan, Placement, and Timing
 
-    ```bash
-    make 6_detail_placement DESIGN_CONFIG=../designs/asap7/gcd/config.mk
-    ```
+### 1. Floorplan Visualization
 
-The flow will automatically execute:
+<img width="1920" height="1080" alt="Screenshot from 2025-10-27 00-11-22" src="https://github.com/user-attachments/assets/2a9bd1c6-3dec-4f67-86e6-baedb3545974" />
 
-1.  Synthesis (with Yosys)
-2.  **Floorplan** (using your `config.mk` settings)
-3.  Tap cell insertion
-4.  I/O Placement
-5.  **Global Placement**
-6.  **Detailed Placement**
+This screenshot shows the successful output of the **floorplanning stage** (`2_floorplan.odb`), loaded in the OpenROAD GUI.
 
-### 3\. Viewing the Results
+* **Die and Core:** It displays the initialized die boundary (outer rectangle) and the core area (inner rectangle) where cells will be placed.
+* **Standard Cell Rows:** The horizontal blue lines are the empty standard cell rows, which act as the "shelves" for holding the logic.
+* **Power Grid (PDN):** The overlaid grid of thick pink and green lines is the Power Distribution Network, which delivers VDD (power) and GND (ground) across the chip.
 
-Your original guide showed screenshots from the OpenROAD GUI. You can still do this\! The flow saves the result of *each step* in the `results/` directory.
+### 2. Detailed Placement Visualization
 
-To see the final placement:
+<img width="1920" height="1080" alt="Screenshot from 2025-10-27 00-13-39" src="https://github.com/user-attachments/assets/f15b33c6-a79b-43b2-b698-f7ac73aac373" />
 
-1.  **Launch the OpenROAD GUI:**
+This view shows the layout after the **detailed placement stage** (`3_place.odb`).
 
-    ```bash
-    openroad
-    ```
+* **Placed Cells:** The core is now filled with hundreds of small red blocks, which are the individual standard cells (AND gates, flip-flops, etc.) from the `gcd` design.
+* **Legalized Layout:** All cells have been "snapped" to the standard cell rows and are perfectly aligned with no overlaps. This is a "legal" placement.
+* **Timing Prep:** The Tcl console at the bottom shows the commands used to load this design (`read_db ... 3_place.odb`) and begin running Static Timing Analysis (`sta::find_timing`).
 
-2.  **In the GUI, load the final placed design:**
-    The flow saves the design database (`.odb`) or a standard `.def` file. You can load this to visually inspect the floorplan and placement.
+### 3. Post-Placement Static Timing Analysis (STA) Report
 
-    The resulting layout will show the core area, power grid, and all standard cells snapped to the rows with no overlaps, just like in your original screenshots.
+<img width="1920" height="1080" alt="Screenshot from 2025-10-27 00-18-27" src="https://github.com/user-attachments/assets/774b1371-1f54-4ed6-ab32-25b57466ac9c" />
+
+This screenshot shows the text report (`3_detailed_place.rpt`) generated after placement. This report analyzes if the design is fast enough to meet its clock speed.
+
+* **Critical Path:** The report details the single worst-offending path in the design.
+* **Timing Violation:** The most important line is at the bottom: **`slack (VIOLATED) -0.01`**.
+* **Conclusion:** This indicates the design is **failing timing** by a very small margin (0.01ns). The "data arrival time" (0.37ns) is just slightly later than the "data required time" (0.37ns). This is a common result after placement, and the flow will attempt to fix this violation in the upcoming Clock Tree Synthesis (CTS) and routing stages.
