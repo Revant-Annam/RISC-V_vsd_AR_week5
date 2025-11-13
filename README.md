@@ -16,7 +16,7 @@ Before the installation, it's crucial to understand the difference between the *
 | :--- | :--- | :--- |
 | **What it is** | A single, powerful C++ executable | A collection of Makefiles & Tcl scripts |
 | **Primary Use** | Performing one specific PD task at a time (e.g., `global_placement`) | Running the *entire* automated RTL-to-GDSII flow |
-| **How you use it** | In a Tcl shell or GUI, running manual commands | From the terminal, running a single `make` command |
+| **How to use it** | In a Tcl shell or GUI, running manual commands | From the terminal, running a single `make` command |
 | **Installation** | Complex, manual compilation from source | Simple `git clone` & running a setup script |
 
 -----
@@ -53,8 +53,8 @@ sudo ./etc/DependencyInstaller.sh -all
 
   * **What this does:**
       * `sudo`: Runs the script with "superuser" (administrator) privileges, which are required to install software system-wide.
-      * `./etc/DependencyInstaller.sh`: This is the main setup script you are running.
-      * `-all`: This flag tells the script to do *everything*. As your screenshots (`...01-09-42.jpg`, `...01-09-51.png`) show, this includes:
+      * `./etc/DependencyInstaller.sh`: This is the main setup script which is running.
+      * `-all`: This flag tells the script to do *everything*. This includes:
         1.  **Installing system packages:** It runs `apt update` and installs all required development libraries (like `build-essential`, `cmake`, `python3-dev`, `libboost`, etc.).
         2.  **Triggering Local Builds:** Instead of downloading pre-built binaries, this flag tells the script to build every tool from scratch.
 
@@ -74,7 +74,7 @@ sudo ./etc/DependencyInstaller.sh -all
 
  * **What this does:**
       * `./build_openroad.sh`: This is the dedicated shell script inside the `tools/OpenROAD` folder responsible *only* for compiling the OpenROAD C++ source code.
-      * `--local`: This flag tells the script to install the final `openroad` executable into the local `tools/install/` directory within your `OpenROAD-flow-scripts` folder, rather than trying to install it system-wide (which would require `sudo`). This is exactly what the flow needs.
+      * `--local`: This flag tells the script to install the final `openroad` executable into the local `tools/install/` directory within the `OpenROAD-flow-scripts` folder, rather than trying to install it system-wide (which would require `sudo`). This is exactly what the flow needs.
 
 ### 4\. Verify the installation 
 
@@ -93,11 +93,10 @@ yosys -help
 ### 1. Synthesis (Stage 1)
 
 * **Command Triggered:** `1_yosys_synthesis`
-* **What it Did:** This stage uses **Yosys** to synthesize your design.
-    * It reads your Verilog source code (`designs/src/gcd/gcd.v`).
+* **What it Did:** This stage uses **Yosys** to synthesize the design.
+    * It reads the Verilog source code (`designs/src/gcd/gcd.v`).
     * It reads the "liberty" file (`.lib`) for the `nanogate45` PDK, which describes all the available standard cells (like `AND`, `OR`, `DFF`, etc.).
-    * It converts your abstract Verilog code into a **netlist**—a specific list of those standard cells and how they are connected.
-    * Your log shows it finished successfully: `End of script.`
+    * It converts an abstract Verilog code into a **netlist**—a specific list of those standard cells and how they are connected.
 
 <img width="1920" height="1080" alt="Screenshot from 2025-10-27 00-07-09" src="https://github.com/user-attachments/assets/01df1936-4416-44f6-b36c-4668934d9d12" />
 
@@ -107,7 +106,7 @@ yosys -help
 
 * **Command Triggered:** `2_1_floorplan`, `2_3_floorplan_tapcell`, `2_4_floorplan_pdn`
 * **What it Did:** Immediately after synthesis, the floorplan stage began.
-    * `2_1_floorplan`: This command initialized the chip's boundaries (the **die**) and the area for placing cells (the **core**). Your log shows it achieved a `56% utilization`. It also created the horizontal standard cell rows.
+    * `2_1_floorplan`: This command initialized the chip's boundaries (the **die**) and the area for placing cells (the **core**). The log shows it achieved a `56% utilization`. It also created the horizontal standard cell rows.
     * `2_3_floorplan_tapcell`: This inserted **tap cells** (`TAP-0004] Inserted 48 endcaps.`). These are special cells placed in the rows to provide a good connection to the power and ground grid, preventing a "latch-up" condition.
     * `2_4_floorplan_pdn`: This generated the **Power Distribution Network** (`[INFO PDN-0001] Inserting grid:`). This is the metal grid (VDD and GND) that delivers power to all the cells.
 
@@ -118,15 +117,13 @@ yosys -help
 ### 3. Placement (Stage 3)
 
 * **Command Triggered:** `3_1_place_gp_skip_io`, `3_5_place_dp`
-* **What it Did:** With the floorplan and power grid ready, the flow began placing the 551 standard cells from your synthesized design.
+* **What it Did:** With the floorplan and power grid ready, the flow began placing the 551 standard cells from the synthesized design.
     * `3_1_place_gp...`: This is **Global Placement**. The tool finds the *optimal approximate* location for all cells to minimize wire length and congestion. At this stage, cells are allowed to overlap.
     * `3_5_place_dp...`: This is **Detailed Placement**. The tool takes the "illegal" global placement and legalizes it. It snaps all cells to the grid, ensures there are **zero overlaps** (`[INFO DPL-0312] Found 0 overlaps...`), and fine-tunes the locations to meet design rules.
 
 <img width="1920" height="1080" alt="Screenshot from 2025-10-27 00-09-00" src="https://github.com/user-attachments/assets/30982160-8931-4182-b345-a8ed4d63c783" />
 
 <img width="1920" height="1080" alt="Screenshot from 2025-10-27 00-09-14" src="https://github.com/user-attachments/assets/44fe4d19-8c8c-41a6-a6eb-3ab57338e72d" />
-
-Here is a brief explanation of those results, perfect for adding to your Git repository.
 
 ---
 
@@ -139,7 +136,7 @@ Here is a brief explanation of those results, perfect for adding to your Git rep
 This screenshot shows the successful output of the **floorplanning stage** (`2_floorplan.odb`), loaded in the OpenROAD GUI.
 
 * **Die and Core:** It displays the initialized die boundary (outer rectangle) and the core area (inner rectangle) where cells will be placed.
-* **Standard Cell Rows:** The horizontal blue lines are the empty standard cell rows, which act as the "shelves" for holding the logic.
+* **Standard Cell Rows:** The horizontal blue lines are the empty standard cell rows, which are essential for placement of the Standard cells.
 * **Power Grid (PDN):** The overlaid grid of thick pink and green lines is the Power Distribution Network, which delivers VDD (power) and GND (ground) across the chip.
 
 ### 2. Detailed Placement Visualization
@@ -160,4 +157,4 @@ This screenshot shows the text report (`3_detailed_place.rpt`) generated after p
 
 * **Critical Path:** The report details the single worst-offending path in the design.
 * **Timing Violation:** The most important line is at the bottom: **`slack (VIOLATED) -0.01`**.
-* **Conclusion:** This indicates the design is **failing timing** by a very small margin (0.01ns). The "data arrival time" (0.37ns) is just slightly later than the "data required time" (0.37ns). This is a common result after placement, and the flow will attempt to fix this violation in the upcoming Clock Tree Synthesis (CTS) and routing stages.
+* **Conclusion:** This indicates the design is **failing timing** by a very small margin (0.01ns). The "data arrival time" (0.37ns) is just slightly later than the "data required time" (0.37ns). This is a common result after placement, and this violation can be fixed in the upcoming Clock Tree Synthesis (CTS) and routing stages.
